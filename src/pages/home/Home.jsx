@@ -1,6 +1,11 @@
+import Columns from "../../components/Columns"
+
 const Home = () => {
     return (
-        <div>Home</div>
+        <>
+
+            <Columns />
+        </>
     )
 }
 export default Home
