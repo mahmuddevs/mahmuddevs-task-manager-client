@@ -1,6 +1,43 @@
-import { FaClipboardList, FaSpinner, FaCheckCircle, FaTimes } from "react-icons/fa"
+import { useState } from "react"
+import { FaClipboardList, FaSpinner, FaCheckCircle, FaTimes, FaPlus } from "react-icons/fa"
+import useUserData from "../hooks/useUserData"
+import useAxios from "../hooks/useAxios"
+import Swal from 'sweetalert2'
 
 const Columns = () => {
+    const [addTask, setAddTask] = useState(false)
+    const [userData, userLoading] = useUserData()
+    const axiosBase = useAxios()
+
+    const handleAddTask = async (e) => {
+        e.preventDefault()
+
+        const formData = new FormData(e.target)
+        const taskData = Object.fromEntries(formData)
+        const userID = userData?.userID
+        const taskInfo = { ...taskData, userID, state: 'to-do' }
+
+        const res = await axiosBase.post('/tasks', taskInfo)
+        if (res?.data?.acknowledged) {
+            Swal.fire({
+                position: "top-end",
+                icon: "success",
+                title: "Task Added Successfully",
+                showConfirmButton: false,
+                timer: 1500
+            });
+            e.target.reset()
+            setAddTask(false)
+        } else {
+            Swal.fire({
+                position: "top-end",
+                icon: "error",
+                title: "Something Went Wrong",
+                showConfirmButton: false,
+                timer: 1500
+            });
+        }
+    }
     return (
         <div className="w-11/12 md:container xl:w-9/12 mx-auto my-14 lg:my-24 min-h-[75vh] md:flex gap-6 space-y-6 md:space-y-0">
             {/* To-Do Column */}
@@ -16,11 +53,28 @@ const Columns = () => {
                                 <h4 className="text-lg font-semibold w-8/12">Lorem, ipsum dolor sit amet consectetur adipisicing.</h4>
                                 <FaTimes className="ms-auto cursor-pointer transition-transform duration-300 hover:scale-150 self-start mt-2" />
                             </div>
-
                             <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Veritatis minima inventore maxime tempore aliquam fuga itaque labore iste ratione veniam!</p>
                         </div>
                     </div>
-
+                    {/* Adding New Task */}
+                    <div className="bg-white p-4 mb-2 rounded-md shadow-sm">
+                        {
+                            addTask ? (
+                                <form onSubmit={handleAddTask}>
+                                    <input type="text" name="title" placeholder="Task Name" className="outline-none border-b w-full h-11 mb-6" />
+                                    <textarea type="text" name="description" placeholder="Description" className="outline-none border-b w-full"></textarea>
+                                    <div className="space-x-4">
+                                        <button type="submit" className="btn btn-primary btn-sm mt-3">Add</button>
+                                        <a onClick={() => { setAddTask(false) }} className="btn btn-neutral btn-sm">Cancel</a>
+                                    </div>
+                                </form>
+                            ) : (
+                                <div onClick={() => { setAddTask(true) }} className="flex items-center gap-4 cursor-pointer">
+                                    <FaPlus /> Add Task
+                                </div>
+                            )
+                        }
+                    </div>
                 </div>
             </div>
 
