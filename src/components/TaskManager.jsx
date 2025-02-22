@@ -1,72 +1,51 @@
-import React, { useState } from "react";
-import {
-    DndContext,
-    closestCorners,
-    PointerSensor,
-    TouchSensor,
-    KeyboardSensor,
-    useSensor,
-    useSensors,
-} from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
-import TaskColumn from "./TaskColumn";
+import React from 'react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import TaskColumn from './TaskColumn';
+import useTaskDataByUserID from '../hooks/useTaskDataByUserID';
+import useUserData from '../hooks/useUserData';
+import useUpdateTask from '../hooks/useUpdateTask';
 
-const initialTasks = [
-    { _id: "1", title: "Task 1", description: "Description for Task 1", state: "to-do" },
-    { _id: "2", title: "Task 2", description: "Description for Task 2", state: "in-progress" },
-    { _id: "3", title: "Task 3", description: "Description for Task 3", state: "done" },
-];
+const TaskManager = () => {
+    const [userData] = useUserData();
+    const userID = userData?.userID;
+    const [tasks, taskLoading, taskRefetch] = useTaskDataByUserID(userID);
+    const { mutateAsync: updateTask, isLoading: isUpdating } = useUpdateTask();
 
-export default function TaskManager() {
-    const [tasks, setTasks] = useState(initialTasks);
+    if (taskLoading) return <div>Loading tasks...</div>;
+    if (!tasks || tasks.length === 0) return <div>No tasks available.</div>;
 
-    const sensors = useSensors(
-        useSensor(PointerSensor),
-        useSensor(TouchSensor),
-    );
-
-    const handleDragEnd = (event) => {
-        const { active, over } = event;
-        if (!over) return;
-
-        const activeId = active.id;
-        const overId = over.id;
-
-        const draggedTask = tasks.find((task) => task._id === activeId);
-        if (!draggedTask) return;
-
-        const newState = overId.includes("to-do")
-            ? "to-do"
-            : overId.includes("in-progress")
-                ? "in-progress"
-                : "done";
-
+    const moveTask = async (taskId, newState) => {
+        // Optimistic UI update
         const updatedTasks = tasks.map((task) =>
-            task._id === activeId ? { ...task, state: newState } : task
+            task._id === taskId ? { ...task, state: newState } : task
         );
 
-        const currentColumnTasks = updatedTasks.filter((task) => task.state === newState);
-        const oldIndex = currentColumnTasks.findIndex((task) => task._id === activeId);
-        const newIndex = currentColumnTasks.findIndex((task) => task._id === overId);
+        taskRefetch(updatedTasks);
 
-        if (oldIndex !== -1 && newIndex !== -1) {
-            arrayMove(currentColumnTasks, oldIndex, newIndex);
+        try {
+            await updateTask({ taskId, newState }); // Ensure this is awaited properly
+            taskRefetch();
+        } catch (error) {
+            console.error('Error updating task state:', error);
+            taskRefetch(tasks);
         }
-
-        setTasks(updatedTasks);
     };
 
     return (
-        <DndContext
-            sensors={sensors}
-            collisionDetection={closestCorners}
-            onDragEnd={handleDragEnd}
-        >
-            <div className="grid md:grid-cols-3 gap-4">
-                <TaskColumn title="To-Do" columnId="to-do" tasks={tasks} icon="clipboard" />
-                <TaskColumn title="In Progress" columnId="in-progress" tasks={tasks} icon="spinner" />
-                <TaskColumn title="Done" columnId="done" tasks={tasks} icon="check-circle" />
+        <DndProvider backend={HTML5Backend}>
+            <div className="grid md:grid-cols-3 gap-4 p-4 lg:w-9/12 mx-auto">
+                {['to-do', 'in-progress', 'done'].map((state) => (
+                    <TaskColumn
+                        key={state}
+                        state={state}
+                        tasks={tasks.filter((task) => task.state === state)}
+                        moveTask={moveTask}
+                    />
+                ))}
             </div>
-        </DndContext>
+        </DndProvider>
     );
-}
+};
+
+export default TaskManager;
