@@ -5,7 +5,7 @@ const useTaskDataByUserID = (userID) => {
     const axiosBase = useAxios()
 
     const { data: tasks = [], isLoading: taskLoading, refetch: taskRefetch } = useQuery({
-        queryKey: ['user-id',],
+        queryKey: ['tasks', userID],
         queryFn: async () => {
             const res = await axiosBase.get(`/tasks/${userID}`)
             return res.data

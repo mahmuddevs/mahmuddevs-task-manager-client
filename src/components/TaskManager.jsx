@@ -24,7 +24,7 @@ const TaskManager = () => {
         taskRefetch(updatedTasks);
 
         try {
-            await updateTask({ taskId, newState }); // Ensure this is awaited properly
+            await updateTask({ taskId, newState });
             taskRefetch();
         } catch (error) {
             console.error('Error updating task state:', error);
@@ -41,6 +41,7 @@ const TaskManager = () => {
                         state={state}
                         tasks={tasks.filter((task) => task.state === state)}
                         moveTask={moveTask}
+                        taskRefetch={taskRefetch}
                     />
                 ))}
             </div>

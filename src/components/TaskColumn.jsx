@@ -3,8 +3,14 @@ import { useDrop } from 'react-dnd';
 import TaskItem from './TaskItem';
 import { FaPlus } from 'react-icons/fa';
 import Swal from 'sweetalert2';
+import useUserData from '../hooks/useUserData';
+import useAxios from '../hooks/useAxios';
+import UpdateModal from './UpdateModal'
 
-const TaskColumn = ({ state, tasks, moveTask }) => {
+const TaskColumn = ({ state, tasks, moveTask, taskRefetch }) => {
+    const [userData, userLoading] = useUserData()
+    const [isModalOpen, setIsModalOpen] = useState({ state: false, task: {} });
+    const axiosBase = useAxios()
     const [addTask, setAddTask] = useState(false);
     const [, drop] = useDrop(() => ({
         accept: 'TASK',
@@ -30,6 +36,7 @@ const TaskColumn = ({ state, tasks, moveTask }) => {
             });
             e.target.reset();
             setAddTask(false);
+            taskRefetch()
         } else {
             Swal.fire({
                 position: "top-end",
@@ -41,16 +48,44 @@ const TaskColumn = ({ state, tasks, moveTask }) => {
         }
     };
 
+    const handleDeleteTask = async (id) => {
+        Swal.fire({
+            title: "Are you sure?",
+            text: "You won't be able to revert this!",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Yes, delete it!"
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                const res = await axiosBase.delete(`/tasks/${id}`)
+                if (res.data?.deletedCount) {
+                    Swal.fire({
+                        title: "Deleted!",
+                        text: "Your task has been deleted.",
+                        icon: "success"
+                    });
+                    taskRefetch()
+                }
+            }
+        });
+    };
+    const handleEditTask = (task = {}) => {
+        setIsModalOpen({ state: true, task: { ...task } })
+    }
+
     return (
         <div ref={drop} className="flex flex-col min-h-[75vh] bg-gray-200 rounded-lg p-4">
             <h2 className="text-lg font-bold mb-4 flex items-center">
                 {/* {icons[icon]} */}
                 {state}
             </h2>
+            <UpdateModal isOpen={isModalOpen} setIsModalOpen={setIsModalOpen} refetch={taskRefetch} />
             <div className="flex-grow bg-white rounded-md p-2 min-h-[50vh]">
                 <h2 className="text-xl font-semibold mb-4 capitalize">{state.replace('-', ' ')}</h2>
                 {tasks.map((task) => (
-                    <TaskItem key={task._id} task={task} />
+                    <TaskItem key={task._id} task={task} handleDeleteTask={handleDeleteTask} handleEditTask={handleEditTask} />
                 ))}
                 <div className="p-4">
                     {
